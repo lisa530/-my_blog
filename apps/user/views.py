@@ -1,6 +1,6 @@
 # import hashlib
 #
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
 # 导入werkzeug内置的密码加密模块
 from werkzeug.security import generate_password_hash, check_password_hash
 # 创建蓝图对象
@@ -91,13 +91,33 @@ def login():
             flag = check_password_hash(user.password,password)
             if flag:
                 # return '用户登录成功'
-                response = redirect(url_for('user.index'))
-                # 设置cookie,max_age设置cookie过期时间，单位为秒
-                response.set_cookie('uid', str(user.id),max_age=3600)
-                return response
+                # 方式一：通过cookie实现会话保存
+                # response = redirect(url_for('user.index'))
+                # # 设置cookie,max_age设置cookie过期时间，单位为秒
+                # response.set_cookie('uid', str(user.id),max_age=3600)
+                # return response
+                # 方式二：使用session实现状态保持
+                session['uid'] = user.id
+                return redirect(url_for('user.index'))
+
         else:
             return render_template('user/login.html', msg='用户名或者密码有误')
     return render_template('user/login.html')
+
+
+@user_bp.route('/')
+def index():
+    """首页"""
+    # 从请求头获取cookie信息
+    # uid = request.cookies.get('uid',None)
+    # 使用session保存用户状态
+    uid = session.get('uid')
+    # 如果uid存在，表示用户登录成功
+    if uid:
+        user = User.query.get(uid)
+        return render_template('user/index.html',user=user)
+    else: # 用户未登录
+        return render_template('user/index.html')
 
 
 @user_bp.route('/logout')
@@ -105,20 +125,14 @@ def logout():
     """用户退出"""
     response = redirect(url_for('user.index'))
     # 删除浏览器保存的cookie
-    response.delete_cookie('uid')
+    # response.delete_cookie('uid')
+
+    # 删除指定值
+    # del session['uid']  # 只会删除session中的这个键值对，不会删除session空间和cookie
+    session.clear() # 删除session中所有的值，将服务端和客户端session都删除
     return response
 
 
-@user_bp.route('/')
-def index():
-    """首页"""
-    # 从请求头获取cookie信息
-    uid = request.cookies.get('uid',None)
-    # 如果uid存在，表示用户登录成功
-    if uid:
-        user = User.query.get(uid)
-        return render_template('user/index.html',user=user)
-    else: # 用户未登录
-        return render_template('user/index.html')
+
 
 
