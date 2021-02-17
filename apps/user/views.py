@@ -76,18 +76,9 @@ def check_phone():
         return jsonify(code=200, msg='此号码可用')
 
 
-
-
-
-@user_bp.route('/')
-def index():
-    """首页"""
-    return render_template('user/index.html')
-
-
 @user_bp.route('/login',methods=['GET','POST'])
 def login():
-    """登录"""
+    """用户登录"""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -99,7 +90,35 @@ def login():
             # 如果flag=True表示匹配，否则密码不匹配
             flag = check_password_hash(user.password,password)
             if flag:
-                return '用户登录成功'
+                # return '用户登录成功'
+                response = redirect(url_for('user.index'))
+                # 设置cookie,max_age设置cookie过期时间，单位为秒
+                response.set_cookie('uid', str(user.id),max_age=3600)
+                return response
         else:
             return render_template('user/login.html', msg='用户名或者密码有误')
     return render_template('user/login.html')
+
+
+@user_bp.route('/logout')
+def logout():
+    """用户退出"""
+    response = redirect(url_for('user.index'))
+    # 删除浏览器保存的cookie
+    response.delete_cookie('uid')
+    return response
+
+
+@user_bp.route('/')
+def index():
+    """首页"""
+    # 从请求头获取cookie信息
+    uid = request.cookies.get('uid',None)
+    # 如果uid存在，表示用户登录成功
+    if uid:
+        user = User.query.get(uid)
+        return render_template('user/index.html',user=user)
+    else: # 用户未登录
+        return render_template('user/index.html')
+
+
