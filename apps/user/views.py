@@ -60,22 +60,34 @@ def content_decode(content):
 @user_bp1.route('/')
 def index():
     """首页"""
-    # 1。cookie获取方式
+    # 1.cookie获取方式
     # uid = request.cookies.get('uid', None)
-    # 2。session的获取,session底层默认获取
-    # 2。session的方式：
+    # 2.session的获取,session底层默认获取
     uid = session.get('uid')
-    # 获取文章列表,根据最新发布时间降序
-    articles = Article.query.order_by(-Article.pdatetime).all()
+    # 接收页码参数
+    page = int(request.args.get('pgge',1))
+    # 获取文章列表,根据最新发布时间降序,进行分页
+    # pgae表示第一页，per_page:一页显示几条数据
+    pagination = Article.query.order_by(-Article.pdatetime).paginate(page=1,per_page=4)
+    # 获取分页后的数据
+    print(pagination.items) # 所有分页数据
+    print(pagination.page) # 当前页码数
+    print(pagination.prev_num) # 当前页的前一页码数
+    print(pagination.next_num) # 当前页的下一页码数
+    print(pagination.has_next) # True
+    print(pagination.pages) # True
+    print(pagination.pages) # 总共有几页
+    print(pagination.total) # 总的记录条数
+
     # 获取分类列表
     types = Article_type.query.all()
     # 判断用户是否登录
     if uid:
         user = User.query.get(uid) # 获取当前登录用户id
-        # 渲染用户和文章信息
-        return render_template('user/index.html', user=user, articles=articles, types=types)
+        # 渲染用户和文章信息及分页后的数据
+        return render_template('user/index.html', user=user, types=types, pagination=pagination)
     else:
-        return render_template('user/index.html', articles=articles, types=types)
+        return render_template('user/index.html',  types=types,pagination=pagination)
 
 
 # 用户注册
