@@ -32,7 +32,6 @@
                 <label for="inputUsername" class="col-md-2 control-label col-md-offset-1">用户名</label>
                 <div class="col-md-6">
                     <input type="text" class="form-control" id="inputUsername" placeholder="username" name="username">
-                     <span> </span>
                 </div>
             </div>
             <div class="form-group">
@@ -78,17 +77,12 @@
     {{ super() }}
     <script>
         $('#inputPhone').blur(function () {
-            {#获取当前输入框的值赋值给phone#}
             let phone = $(this).val();
-            {#获取当前对象的下一个标签#}
             let span_ele = $(this).next('span');
-            {#判断手机长度#}
             if (phone.length == 11) {
                 span_ele.text('');
-                {#使用ajax发送get请求， url_for请求的地址， {phone:phone}携带的数据，以字典传递 data接收返回的结果#}
                 $.get('{{ url_for('user.check_phone') }}', {phone: phone}, function (data) {
                     // {#console.log(data);#}
-                   {#判断返回的状态码#}
                     if (data.code != 200) {
                         span_ele.css({"color": "#ff0011", "font-size": "12px"});
                         span_ele.text(data.msg);
@@ -99,10 +93,9 @@
                 span_ele.text('手机格式错误');
             }
 
-
         })
 
-      $('#inputUsername').blur(function () {
+    $('#inputUsername').blur(function () {
           {#获取当前输入框的值赋值给phone#}
           let username = $(this).val();
           {#获取当前对象的下一个标签#}

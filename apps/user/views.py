@@ -11,11 +11,54 @@ from apps.user.smssend import SmsSendAPIDemo
 # 创建蓝图对象,url_prefix指定路由前缀
 user_bp = Blueprint('user',__name__,url_prefix='/user')
 
+required_login_list = ['/user/center', '/user/change']
 
 # 使用蓝图绑定路由
 # @user_bp.route('/')
 # def hello_world():
 #     return 'Hello World!'
+
+
+# @user_bp.before_app_first_request
+# def first_request():
+#     """第一次请求时调用"""
+#     print("before_app_first_request")
+
+
+
+@user_bp.before_app_request
+def before_request():
+    """每次请求都会调用"""
+    print("====before_app_request====")
+    # 请求的路径中在列表中
+    if request.path in required_login_list:
+        # 从session中获取登录用户
+        id = session.get('uid')
+        if not id:
+            return render_template('user/login.html')
+        else:
+            # 查询用户
+            user = User.query.get('id')
+            # 将用户存储在g对象的user属性中
+            # g对象是flask是全局对象，本次请求结束后销毁该对象
+            g.user = user
+
+
+
+# @user_bp.after_app_request
+# def after_request_test(response):
+#     """每次请求后调用"""
+#     print("-----after_request_test-------")
+#     # 需要接收一个response和返回response
+#     return response
+
+#
+# @user_bp.teardown_app_request
+# def teardown_request_test(response):
+#     """最后调用"""
+#     print('>>>teardown_request_test>>>')
+#     return response
+
 
 
 @user_bp.route('/register',methods=['GET','POST'])
@@ -130,8 +173,6 @@ def login():
     return render_template('user/login.html')
 
 
-
-
 @user_bp.route('/')
 def index():
     """首页"""
@@ -158,6 +199,20 @@ def logout():
     # del session['uid']  # 只会删除session中的这个键值对，不会删除session空间和cookie
     session.clear() # 删除session中所有的值，将服务端和客户端session都删除
     return response
+
+
+@user_bp.route('/center')
+def user_center():
+    """用户中心"""
+    # 渲染用户信息，将当前登录用户传递到模板中
+    return render_template('user/center.html',user=g.user)
+
+
+@user_bp.route('/change',methods=['GET','POST'])
+def user_change():
+    """用户信息修改"""
+    return render_template('user/center.html',user=g.user)
+
 
 @user_bp.route('/sendMsg')
 def send_message():
