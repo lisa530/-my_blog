@@ -93,9 +93,9 @@
                 span_ele.text('手机格式错误');
             }
 
-        })
+             })
 
-    $('#inputUsername').blur(function () {
+         $('#inputUsername').blur(function () {
           {#获取当前输入框的值赋值给phone#}
           let username = $(this).val();
           {#获取当前对象的下一个标签#}
@@ -116,6 +116,7 @@
               span_ele.css({"color": "#ff0011", "font-size": "12px"});
               span_ele.text('手机格式错误');
           }
-      })
+
+        })
     </script>
 {% endblock %}

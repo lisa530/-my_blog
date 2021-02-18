@@ -1,96 +1,114 @@
-import hashlib
+import os
 
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session, g
-# 导入werkzeug内置的密码加密模块
 from werkzeug.security import generate_password_hash, check_password_hash
-# 创建蓝图对象
-from ext import db
-from user.models import User
+from werkzeug.utils import secure_filename
+
+from apps.article.models import Article_type, Article
+from apps.user.models import User
 from apps.user.smssend import SmsSendAPIDemo
+from exts import db
+from settings import Config
 
-# 创建蓝图对象,url_prefix指定路由前缀
-user_bp = Blueprint('user',__name__,url_prefix='/user')
+user_bp1 = Blueprint('user', __name__, url_prefix='/user')
 
-required_login_list = ['/user/center', '/user/change']
-
-# 使用蓝图绑定路由
-# @user_bp.route('/')
-# def hello_world():
-#     return 'Hello World!'
+required_login_list = ['/user/center', '/user/change', '/article/publish']
 
 
-# @user_bp.before_app_first_request
-# def first_request():
-#     """第一次请求时调用"""
-#     print("before_app_first_request")
+@user_bp1.before_app_first_request
+def first_request():
+    print('before_app_first_request')
 
 
 
-@user_bp.before_app_request
-def before_request():
-    """每次请求都会调用"""
-    print("====before_app_request====")
-    # 请求的路径中在列表中
+@user_bp1.before_app_request
+def before_request1():
+    """每次请求前认证"""
+    print('before_request1before_request1', request.path)
     if request.path in required_login_list:
-        # 从session中获取登录用户
         id = session.get('uid')
         if not id:
             return render_template('user/login.html')
         else:
-            # 查询用户
-            user = User.query.get('id')
-            # 将用户存储在g对象的user属性中
-            # g对象是flask是全局对象，本次请求结束后销毁该对象
+            user = User.query.get(id)
+            # g对象，g对象flask的全局对象，保存本次请求的对象
             g.user = user
 
 
+@user_bp1.after_app_request
+def after_request_test(response):
+    response.set_cookie('a', 'bbbb', max_age=19)
+    print('after_request_test')
+    return response
 
-# @user_bp.after_app_request
-# def after_request_test(response):
-#     """每次请求后调用"""
-#     print("-----after_request_test-------")
-#     # 需要接收一个response和返回response
-#     return response
 
-#
-# @user_bp.teardown_app_request
-# def teardown_request_test(response):
-#     """最后调用"""
-#     print('>>>teardown_request_test>>>')
-#     return response
+@user_bp1.teardown_app_request
+def teardown_request_test(response):
+    print('teardown_request_test')
+    return response
 
 
 
-@user_bp.route('/register',methods=['GET','POST'])
+@user_bp1.route('/')
+def index():
+    """首页"""
+    # 1。cookie获取方式
+    # uid = request.cookies.get('uid', None)
+    # 2。session的获取,session底层默认获取
+    # 2。session的方式：
+    uid = session.get('uid')
+    # 获取文章列表,根据发布时间升序排序
+    articles = Article.query.order_by(Article.pdatetime).all()
+    # 获取分类列表
+    types = Article_type.query.all()
+    # 判断用户是否登录
+    if uid:
+        user = User.query.get(uid) # 获取当前登录用户id
+        # 渲染用户和文章信息
+        return render_template('user/index.html', user=user, articles=articles, types=types)
+    else:
+        return render_template('user/index.html', articles=articles, types=types)
+
+
+# 用户注册
+@user_bp1.route('/register', methods=['GET', 'POST'])
 def register():
-    """注册"""
-    # post请求
     if request.method == 'POST':
-        # 接收表单参数
         username = request.form.get('username')
         password = request.form.get('password')
         repassword = request.form.get('repassword')
         phone = request.form.get('phone')
         email = request.form.get('email')
-        # 判断两次密码是否一致
         if password == repassword:
-            # 注册用户并给属性赋值
+            # 注册用户
             user = User()
             user.username = username
             # 使用自带的函数实现加密：generate_password_hash
             user.password = generate_password_hash(password)
-            print(password)
+            # print(password)
             user.phone = phone
             user.email = email
             # 添加并提交
             db.session.add(user)
             db.session.commit()
-            # 重定向到首页
             return redirect(url_for('user.index'))
     return render_template('user/register.html')
 
 
-@user_bp.route('check_username',methods=['GET','POST'])
+# 手机号码验证
+@user_bp1.route('/checkphone', methods=['GET', 'POST'])
+def check_phone():
+    phone = request.args.get('phone')
+    user = User.query.filter(User.phone == phone).all()
+    print(user)
+    # code: 400 不能用    200 可以用
+    if len(user) > 0:
+        return jsonify(code=400, msg='此号码已被注册')
+    else:
+        return jsonify(code=200, msg='此号码可用')
+
+
+@user_bp1.route('check_username',methods=['GET','POST'])
 def check_username():
     """校验用户名是否重复注册"""
     # 接收参数
@@ -104,117 +122,53 @@ def check_username():
         return jsonify(code=200,msg='此用户名可用')
 
 
-@user_bp.route('/checkphone',methods=['GET','POST'])
-def check_phone():
-    """验证手机号是否重复注册"""
-    # 1.接收参数
-    phone = request.args.get('phone')
-    # 2.查询用户手机号，得到用户列表
-    user = User.query.filter(User.phone == phone).all()
-    print(user)
-    # code: 400 不能用    200 可以用
-    if len(user) > 0: # 如果user列表长度大于0,表示用户已注册
-        # 返回json数据
-        return jsonify(code=400, msg='此号码已被注册')
-    else:
-        return jsonify(code=200, msg='此号码可用')
-
-
-@user_bp.route('/login',methods=['GET','POST'])
+# 用户登录
+@user_bp1.route('/login', methods=['GET', 'POST'])
 def login():
-    """用户登录"""
     if request.method == 'POST':
         f = request.args.get('f')
-        if f == '1':
+        if f == '1':  # 用户名或者密码
             username = request.form.get('username')
             password = request.form.get('password')
-            # 查询用户列表
-            users = User.query.filter(User.username==username).all()
-
+            users = User.query.filter(User.username == username).all()
             for user in users:
-                # 校验密码
                 # 如果flag=True表示匹配，否则密码不匹配
-                flag = check_password_hash(user.password,password)
+                flag = check_password_hash(user.password, password)
                 if flag:
-                    # return '用户登录成功'
-                    # 方式一：通过cookie实现会话保存
+                    # 1。cookie实现机制
                     # response = redirect(url_for('user.index'))
-                    # # 设置cookie,max_age设置cookie过期时间，单位为秒
-                    # response.set_cookie('uid', str(user.id),max_age=3600)
+                    # response.set_cookie('uid', str(user.id), max_age=1800)
                     # return response
-                    # 方式二：使用session实现状态保持
+                    # 2。session机制,session当成字典使用
                     session['uid'] = user.id
                     return redirect(url_for('user.index'))
-
             else:
                 return render_template('user/login.html', msg='用户名或者密码有误')
-
         elif f == '2':  # 手机号码与验证码
-            # 接收表单参数
+            print('----->22222')
             phone = request.form.get('phone')
             code = request.form.get('code')
+            # 先验证验证码
             valid_code = session.get(phone)
             print('valid_code:' + str(valid_code))
-            # 先验证验证码
             if code == valid_code:
-                # 查询用户输入的手机号是否和数据库相同
-                user = User.query.filter(User.phone==phone).first()
+                # 查询数据库
+                user = User.query.filter(User.phone == phone).first()
                 print(user)
-                # 如果user存在，则写入到session中
                 if user:
+                    # 登录成功
                     session['uid'] = user.id
-                    # 重定向到首页
                     return redirect(url_for('user.index'))
-                else: # 不存在则渲染错误信息
+                else:
                     return render_template('user/login.html', msg='此号码未注册')
-            else: # 验证码错误
-                return render_template('user/login.html',msg='验证码有误！')
-    # get请求
+            else:
+                return render_template('user/login.html', msg='验证码有误！')
+
     return render_template('user/login.html')
 
 
-@user_bp.route('/')
-def index():
-    """首页"""
-    # 从请求头获取cookie信息
-    # uid = request.cookies.get('uid',None)
-    # 使用session保存用户状态
-    uid = session.get('uid')
-    # 如果uid存在，表示用户登录成功
-    if uid:
-        user = User.query.get(uid)
-        return render_template('user/index.html',user=user)
-    else: # 用户未登录
-        return render_template('user/index.html')
-
-
-@user_bp.route('/logout')
-def logout():
-    """用户退出"""
-    response = redirect(url_for('user.index'))
-    # 删除浏览器保存的cookie
-    # response.delete_cookie('uid')
-
-    # 删除指定值
-    # del session['uid']  # 只会删除session中的这个键值对，不会删除session空间和cookie
-    session.clear() # 删除session中所有的值，将服务端和客户端session都删除
-    return response
-
-
-@user_bp.route('/center')
-def user_center():
-    """用户中心"""
-    # 渲染用户信息，将当前登录用户传递到模板中
-    return render_template('user/center.html',user=g.user)
-
-
-@user_bp.route('/change',methods=['GET','POST'])
-def user_change():
-    """用户信息修改"""
-    return render_template('user/center.html',user=g.user)
-
-
-@user_bp.route('/sendMsg')
+# 发送短信息
+@user_bp1.route('/sendMsg')
 def send_message():
     phone = request.args.get('phone')
     # 补充验证手机号码是否注册，去数据库查询
@@ -225,11 +179,91 @@ def send_message():
     api = SmsSendAPIDemo(SECRET_ID, SECRET_KEY, BUSINESS_ID)
     params = {
         "mobile": phone,
-        "templateId": "10084",
+        "templateId": "11732",
         "paramType": "json",
         "params": "json格式字符串"
     }
     ret = api.send(params)
     print(ret)
-    session[phone] = '189075'
-    return jsonify(code=200, msg='短信发送成功！')
+    # session[phone] = '189075'
+    # return jsonify(code=200, msg='短信发送成功！')
+
+    if ret is not None:
+        if ret["code"] == 200:
+            taskId = ret["result"]["taskId"]
+            print("taskId = %s" % taskId)
+            session[phone] = '189075'
+            return jsonify(code=200, msg='短信发送成功！')
+        else:
+            print("ERROR: ret.code=%s,msg=%s" % (ret['code'], ret['msg']))
+            return jsonify(code=400, msg='短信发送失败！')
+
+
+# 用户退出
+@user_bp1.route('/logout')
+def logout():
+    # 1。 cookie的方式
+    # response = redirect(url_for('user.index'))
+    # 通过response对象的delete_cookie(key),key就是要删除的cookie的key
+    # response.delete_cookie('uid')
+    # 2。session的方式
+    # del session['uid']
+    session.clear()
+    return redirect(url_for('user.index'))
+
+
+# 用户中心
+@user_bp1.route('/center')
+def user_center():
+    types = Article_type.query.all()
+    return render_template('user/center.html', user=g.user, types=types)
+
+
+# 图片的扩展名
+ALLOWED_EXTENSIONS = ['jpg', 'png', 'gif', 'bmp']
+
+
+# 用户信息修改
+@user_bp1.route('/change', methods=['GET', 'POST'])
+def user_change():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        # 只要有文件（图片），获取方式必须使用request.files.get(name)
+        icon = request.files.get('icon')
+        # print('======>', icon)  # FileStorage
+        # 属性： filename 用户获取文件的名字
+        # 方法:  save(保存路径)
+        icon_name = icon.filename  # 1440w.jpg
+        suffix = icon_name.rsplit('.')[-1]
+        if suffix in ALLOWED_EXTENSIONS:
+            icon_name = secure_filename(icon_name)  # 保证文件名是符合python的命名规则
+            file_path = os.path.join(Config.UPLOAD_ICON_DIR, icon_name)
+            icon.save(file_path)
+            # 保存成功
+            user = g.user
+            user.username = username
+            user.phone = phone
+            user.email = email
+            path = 'upload/icon'
+            user.icon = os.path.join(path, icon_name)
+            db.session.commit()
+            return redirect(url_for('user.user_center'))
+        else:
+            return render_template('user/center.html', user=g.user, msg='必须是扩展名是：jpg,png,gif,bmp格式')
+
+    return render_template('user/center.html', user=g.user)
+
+
+@user_bp1.route('/article', methods=['GET', 'POST'])
+def publish_article():
+    """发布文章"""
+    if request.method == 'POST':
+        title = request.form.get('title')
+        type = request.form.get('type')
+        content = request.form.get('content')
+        print(title, type, content)
+
+        return render_template('article/test.html', content=content)
+    return '发表失败！'

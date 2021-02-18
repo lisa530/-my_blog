@@ -1,52 +1,51 @@
 from datetime import datetime
-from ext import db
 
+from exts import db
+'''
+说明今天最后的报错原因：
+Article表中已经有3条数据了，我在Article模型中有增加了一列，
+此列是：type_id = db.Column(db.Integer, db.ForeignKey('type.id'), nullable=False)
+注意我在里面添加了nullable=False,就是说明不能为空。
+
+问题就是我在已经存在数据的表中添加了一列而且还要求此列数据不能为空，这个是冲突的！!!
+故产生的错误。
+
+解决办法：
+nullable=False不添加，就是允许为空，
+或者添加一个默认值也可以。
+
+'''
 
 class Article_type(db.Model):
-    """文章分类表(一类)"""
-
-    __tablename__ = 'type' # 指定表名
-    id = db.Column(db.Integer,primary_key=True,autoincrement=True)
-    type_name = db.Column(db.String(20),nullable=False,doc='文章分类名称')
-    # 添加一个关系查询字段
-    # 多查一:查询文章类型下的文章,通过article_type.articles
-    # 一查多:查询文章属于哪个分类,article.article_type
-    articles = db.relationship('Article',backref='article_type')
+    __tablename__ = 'type'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    type_name = db.Column(db.String(20), nullable=False)
+    articles = db.relationship('Article', backref='articletype')
 
 
 class Article(db.Model):
-    """文章表(子表)"""
-    id = db.Column(db.Integer,primary_key=True,autoincrement=True,doc='主键')
-    title = db.Column(db.String(50),nullable=False,doc='标题')
-    content = db.Column(db.Text,nullable=False,doc='文章内容')
-    pubdatetime = db.Column(db.DateTime,default=datetime.now,doc='发布时间')
-    click_num = db.Column(db.Integer,default=0,doc='点赞')
-    save_num = db.Column(db.Integer,default=0,doc='收藏')
-    love_num = db.Column(db.Integer,default=0,doc='喜欢')
-    # 外键:一个用户对应多篇文章
-    # 注意:外键只能写在多类中
-    user_id = db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
-    # 外键:一篇文章对应多个分类
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    pdatetime = db.Column(db.DateTime, default=datetime.now)
+    click_num = db.Column(db.Integer, default=0)
+    save_num = db.Column(db.Integer, default=0)
+    love_num = db.Column(db.Integer, default=0)
+    # 外键 同步到数据库的外键关系
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     type_id = db.Column(db.Integer, db.ForeignKey('type.id'), nullable=False)
-    # 添加关联查询字段，查询文章对应的评论，article.comments, 查询评论属于哪篇文章：comment.article
-    comments = db.relationship('Comment',backref='article')
-
-    def __str__(self):
-        return self.title
+    comments = db.relationship('Comment', backref='article')
 
 
 class Comment(db.Model):
-    """文章和文章类型的关系表"""
+    # 自定义表的名字
     __tablename__ = 'comment'
 
-    id = db.Column(db.Integer,primary_key=True,autoincrement=True)
-    comment = db.Column(db.String(255),nullable=False,doc='评论')
-    # 外键:评论属于哪个用户
-    user_id = db.Column(db.Integer,db.ForeignKey('user.id'),doc='关联用户的主键')
-    # 外键:评论属于哪篇文章
-    article_id = db.Column(db.Integer,db.ForeignKey('article.id'),doc='关联文章的主键')
-    cdatetime = db.Column(db.DateTime,default=datetime.now(),doc='创建时间')
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    comment = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    article_id = db.Column(db.Integer, db.ForeignKey('article.id'))
+    cdatetime = db.Column(db.DateTime, default=datetime.now)
 
     def __str__(self):
         return self.comment
-
