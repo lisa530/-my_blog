@@ -15,9 +15,10 @@ user_bp1 = Blueprint('user', __name__, url_prefix='/user')
 required_login_list = ['/user/center', '/user/change', '/article/publish']
 
 
-@user_bp1.before_app_first_request
-def first_request():
-    print('before_app_first_request')
+# @user_bp1.before_app_first_request
+# def first_request():
+#     """第一次请求调用"""
+#     print('before_app_first_request')
 
 
 
@@ -35,11 +36,11 @@ def before_request1():
             g.user = user
 
 
-@user_bp1.after_app_request
-def after_request_test(response):
-    response.set_cookie('a', 'bbbb', max_age=19)
-    print('after_request_test')
-    return response
+# @user_bp1.after_app_request
+# def after_request_test(response):
+#     response.set_cookie('a', 'bbbb', max_age=19)
+#     print('after_request_test')
+#     return response
 
 
 @user_bp1.teardown_app_request
@@ -47,6 +48,13 @@ def teardown_request_test(response):
     print('teardown_request_test')
     return response
 
+
+# 自定义过滤器
+@user_bp1.app_template_filter('cdecode')
+def content_decode(content):
+    """获取文章内容"""
+    content = content.decode('utf-8')
+    return content[:200]
 
 
 @user_bp1.route('/')
@@ -57,8 +65,8 @@ def index():
     # 2。session的获取,session底层默认获取
     # 2。session的方式：
     uid = session.get('uid')
-    # 获取文章列表,根据发布时间升序排序
-    articles = Article.query.order_by(Article.pdatetime).all()
+    # 获取文章列表,根据最新发布时间降序
+    articles = Article.query.order_by(-Article.pdatetime).all()
     # 获取分类列表
     types = Article_type.query.all()
     # 判断用户是否登录

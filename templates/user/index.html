@@ -6,29 +6,57 @@
     {{ super() }}
     <style>
         #container {
-            width: 1000px;
+            width: 1200px;
             margin: 0 auto;
         }
 
         .article {
-            width: 1000px;
-            background-color: darkseagreen;
-            height: 100px;
-            margin-bottom: 20px;
+            width: 90%;
+            margin: 20px auto;
+            padding: 5px 10px;
+            background-color: rgba(131, 202, 227, 0.7);
             border-bottom: 1px solid gray;
         }
+
+        .article p {
+            font-size: 14px;
+        rgba(75, 75, 74, 1.00);
+        }
+
+        .article h4 a {
+            color: rgba(80, 80, 79, 1.00);
+        }
+
+        .article h4 a:hover {
+            color: black;
+        }
+
+        .article div span {
+            margin-left: 20px;
+        }
+
+        .article div {
+            margin-bottom: 18px;
+        }
+
     </style>
 {% endblock %}
 
 {% block newcontent %}
-    <div id="container">
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-        <div class="article"></div>
-    </div>
+ <div id="container">
+        {% for article in articles %}
+            <div class="article">
+                <h4><a href="{{ article.title }}"></a></h4>
+                <p>
+                    <span>作者：{{ article.user.username }}</span>
+                    <br>
+                    <br>
+                <div>{{ article.content | cdecode | safe }}</div>
+                </p>
+                <div>
+                    <span style="margin-left: 0">发布时间：{{ article.pdatetime }}</span>
+                    <span>收藏:{{ article.save_num }}</span><span>点击量:{{ article.click_num }}</span><span>点赞量:{{ article.love_num }}</span>
+                </div>
+            </div>
+        {% endfor %}
 {% endblock %}
