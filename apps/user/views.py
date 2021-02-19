@@ -44,10 +44,10 @@ def before_request1():
 #     return response
 
 
-@user_bp1.teardown_app_request
-def teardown_request_test(response):
-    print('teardown_request_test')
-    return response
+# @user_bp1.teardown_app_request
+# def teardown_request_test(response):
+#     print('teardown_request_test')
+#     return response
 
 
 # 自定义过滤器
@@ -237,7 +237,8 @@ def logout():
 @user_bp1.route('/center')
 def user_center():
     types = Article_type.query.all()
-    return render_template('user/center.html', user=g.user, types=types)
+    photos = Photo.query.filter(Photo.user_id==g.user.id).all()
+    return render_template('user/center.html', user=g.user, types=types,photos=photos)
 
 
 # 图片的扩展名

@@ -5,11 +5,11 @@ from qiniu import Auth, put_data
 
 def upload_qiniu(filestorage):
     """封装七牛云工具"""
-    access_key =  '1fXvG9wkbN7AgRUG6usHDcRP5Bb85apcovRAIITP'
-    secret_key = 'Aqf1lPAmUG72EdZJ7PxKtWHfWDYNdUycZP1TaAIN'
+    access_key = 'bZlGPCXm3Bt6SPqQeY3G9-Te4PiCHOUlOVuEQWM1'
+    secret_key = '9ttO0AXliBgiUQvMHPsGHPaOXpiqazp6uvDv11nW'
     q = Auth(access_key,secret_key)
     # 七牛云上创建的存储空间名
-    bucket_name = 'myblog202006'
+    bucket_name = 'lisa530'
     # 获取上传后保存的文件名
     filename = filestorage.filename
     # 随机生成随机数
