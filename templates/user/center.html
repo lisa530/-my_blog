@@ -66,7 +66,29 @@
 
                 </form>
             </div>
-            <div class="right1" style="background-color: #00ff80"></div>
+            <div class="right1">
+                <form action="{{ url_for('user.upload_photo') }}" method="post" enctype="multipart/form-data"
+                      class="form-inline">
+                    <input type="file" name="photo" class="form-control">
+                    <input type="submit" value="上传相册" class="btn btn-default">
+                </form>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h3>我的相册</h3>
+                        <div class="row">
+                            {% for photo in photos %}
+                                <div class="col-xs-8 col-sm-4">
+                                    <img src="http://qb894qzgn.bkt.clouddn.com/{{ photo.photo_name }}"
+                                         alt="..." class="img-rounded image">
+                                </div>
+                            {% endfor %}
+
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
             <div class="right1" style="background-color: darkgreen"></div>
             <div class="right1" style="padding-top: 30px">
                 <form action="{{ url_for('user.user_change') }}" method="post" enctype="multipart/form-data">

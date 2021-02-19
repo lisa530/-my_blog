@@ -5,14 +5,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from apps.article.models import Article_type, Article
-from apps.user.models import User
+from apps.user.models import User, Photo
 from apps.user.smssend import SmsSendAPIDemo
 from exts import db
 from settings import Config
+from apps.utils.qiniu import  upload_qiniu # 七牛云
 
 user_bp1 = Blueprint('user', __name__, url_prefix='/user')
 
-required_login_list = ['/user/center', '/user/change', '/article/publish']
+required_login_list = ['/user/center', '/user/change', '/article/publish', '/user/upload_photo']
 
 
 # @user_bp1.before_app_first_request
@@ -287,3 +288,24 @@ def publish_article():
 
         return render_template('article/test.html', content=content)
     return '发表失败！'
+
+
+@user_bp1.route('/upload_photo',methods=['GET','POST'])
+def upload_photo():
+    """上传照片到七牛云"""
+    # 接收要上传的照片参数
+    photo = request.files.get('photo')
+    # 调用工具模块中的方法
+    ret,info = upload_qiniu(photo)
+    if info.status_code == 200:
+        photo = Photo() # 实例化Photo对象
+        # 通过ret.key获取文件名
+        photo.photo_name = ret['key']
+        # 将当前上传图片用户保存到photo.user_id属性中
+        photo.user_id = g.user.id
+        db.session.add(photo) # 添加到数据库并提交
+        db.session.commit()
+        return '上传成功'
+    else:
+        return '上传失败'
+
