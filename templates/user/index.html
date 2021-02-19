@@ -46,7 +46,7 @@
     <div id="container">
         {% for article in pagination.items %}
             <div class="article">
-{#                <h4><a href="{{ url_for('article.article_detail') }}?aid={{ article.id }}">{{ article.title }}</a></h4>#}
+                <h4><a href="{{ url_for('article.article_detail') }}?aid={{ article.id }}">{{ article.title }}</a></h4>
                 <p>
                     <span>作者：{{ article.user.username }}</span>
                     <br>

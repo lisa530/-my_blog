@@ -6,7 +6,7 @@ class Config:
     # mysql+pymysql://user:password@hostip:port/databasename
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:123456@127.0.0.1:3306/flaskblog'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = True
+    # SQLALCHEMY_ECHO = True
     # secret_key
     SECRET_KEY = 'kdjklfjkd87384hjdhjh'
     # 项目路径
