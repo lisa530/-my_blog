@@ -1,24 +1,24 @@
-from flask import Blueprint, request, g, redirect, url_for, render_template, jsonify
+from flask import Blueprint, request, g, redirect, url_for, render_template, jsonify, session
 
-from apps.article.models import Article, Article_type
+from apps.article.models import Article, Article_type, Comment
+from apps.user.models import User
 from exts import db
 
 article_bp1 = Blueprint('article', __name__, url_prefix='/article')
 
 
-# 自定义模板过滤器
-@article_bp1.app_template_filter('cdeocde')
+# 自定义过滤器
+
+@article_bp1.app_template_filter('cdecode')
 def content_decode(content):
-    """实现文章内容解码"""
     content = content.decode('utf-8')
     return content
 
 
+# 发表文章
 @article_bp1.route('/publish', methods=['POST', 'GET'])
 def publish_article():
-    """发布文章"""
     if request.method == 'POST':
-        # 接收表单参数
         title = request.form.get('title')
         type_id = request.form.get('type')
         content = request.form.get('content')
@@ -33,32 +33,57 @@ def publish_article():
         return redirect(url_for('user.index'))
 
 
+# 文章详情
 @article_bp1.route('/detail')
 def article_detail():
-    """文章详情"""
-    # 接收文章id
+    # 获取文章对象通过id
     article_id = request.args.get('aid')
-    # 根据文章id查询数据库
     article = Article.query.get(article_id)
-    # 查看所有的文章类型
+    # 获取文章分类
     types = Article_type.query.all()
-    # 渲染文章详情信息
-    return render_template('article/detail.html', article=article, types=types)
+    # 登录用户
+    user = None
+    user_id = session.get('uid', None)
+    if user_id:
+        user = User.query.get(user_id)
+    # 单独查询评论
+    page = int(request.args.get('page', 1))
+    comments = Comment.query.filter(Comment.article_id == article_id) \
+        .order_by(-Comment.cdatetime) \
+        .paginate(page=page, per_page=5)
+
+    return render_template('article/detail.html', article=article, types=types, user=user, comments=comments)
 
 
+# 点赞
 @article_bp1.route('/love')
 def article_love():
-    """文章电宰点赞"""
-    # 获取查询参数 文章id
     article_id = request.args.get('aid')
-    tag = request.args.get('tag') # 标记,用户是否点赞
-    # 根据文章对象
+    tag = request.args.get('tag')
+
     article = Article.query.get(article_id)
-    # 判断是否点赞
-    if tag == '1': # 已点赞
-        article.love_num -= 1 # 将love_num属性值减1
+    if tag == '1':
+        article.love_num -= 1
     else:
         article.love_num += 1
     db.session.commit()
-    # 返回json数据
     return jsonify(num=article.love_num)
+
+
+# 发表文章评论
+@article_bp1.route('/add_comment', methods=['GET', 'POST'])
+def article_comment():
+    if request.method == 'POST':
+        comment_content = request.form.get('comment')
+        user_id = g.user.id
+        article_id = request.form.get('aid')
+        # 评论模型
+        comment = Comment()
+        comment.comment = comment_content
+        comment.user_id = user_id
+        comment.article_id = article_id
+        db.session.add(comment)
+        db.session.commit()
+
+        return redirect(url_for('article.article_detail') + "?aid=" + article_id)
+    return redirect(url_for('user.index'))

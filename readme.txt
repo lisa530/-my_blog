@@ -134,5 +134,56 @@ after_app_request
 teardown_app_request
 
 3.文件上传
+ A. 本地上传
+    注意：
+    表单：  enctype="multipart/form-data"
+ <form action="提交的路径" method="post" enctype="multipart/form-data">
+        <input type="file" name="photo" class="form-control">
+        <input type="submit" value="上传相册" class="btn btn-default">
+ </form>
+   view视图函数：
+   photo = request.files.get('photo')   ----》photo是FileStorage
 
+   属性和方法：FileStorage = 》fs
+   fs.filename
+   fs.save(path)  ----> path上传的路径os.path.join(UPLOAD_DIR,filename)
+   fs.read()  ----> 将上传的内容转成二进制方式
 
+ B. 上传到云端（对象存储）
+    本地的资源有限或者是空间是有限的
+
+    https://developer.qiniu.com/kodo/sdk/1242/python  ---》参照python SDK
+
+    util.py:
+
+    def upload_qiniu():
+        #需要填写你的 Access Key 和 Secret Key
+        access_key = 'Access_Key'
+        secret_key = 'Secret_Key'
+        #构建鉴权对象
+        q = Auth(access_key, secret_key)
+        #要上传的空间
+        bucket_name = 'Bucket_Name'
+        #上传后保存的文件名
+        key = 'my-python-logo.png'
+        #生成上传 Token，可以指定过期时间等
+        token = q.upload_token(bucket_name, key, 3600)
+        #要上传文件的本地路径
+        localfile = './sync/bbb.jpg'
+        ret, info = put_file(token, key, localfile)
+        print(info)
+
+        ---->put_data()  适用于从filestorage里面读取数据实现上传
+        ---->put_file()  指定文件路径上传
+
+    def delete_qiniu():
+        pass
+
+评论：
+    文章的详情：必须携带aid，aid表示的是文章的主键id
+
+    通过主键id得到文章对象
+
+    如果还有其他内容的分页，就需要在路由携带page
+
+    例如：http://127.0.0.1:5000/article/detail?page=2&aid=1

@@ -14,17 +14,16 @@ class User(db.Model):
     rdatetime = db.Column(db.DateTime, default=datetime.now)
     # 增加一个字段
     articles = db.relationship('Article', backref='user')
+    comments = db.relationship('Comment', backref='user')
 
     def __str__(self):
         return self.username
 
 
 class Photo(db.Model):
-    """用户相册"""
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     photo_name = db.Column(db.String(50), nullable=False)
     photo_datetime = db.Column(db.DateTime, default=datetime.now)
-    # 外键：关联用户模型类的主键id
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __str__(self):

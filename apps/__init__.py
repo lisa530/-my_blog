@@ -1,6 +1,8 @@
 from flask import Flask
 
+from apps.article.view import article_bp
 from apps.article.views import article_bp1
+from apps.user.view import user_bp
 from apps.user.views import user_bp1
 from exts import db, bootstrap
 from settings import DevelopmentConfig

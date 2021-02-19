@@ -7,13 +7,18 @@ from werkzeug.utils import secure_filename
 from apps.article.models import Article_type, Article
 from apps.user.models import User, Photo
 from apps.user.smssend import SmsSendAPIDemo
+from apps.utils.util import upload_qiniu
 from exts import db
 from settings import Config
-from apps.utils.qiniu import  upload_qiniu # 七牛云
 
 user_bp1 = Blueprint('user', __name__, url_prefix='/user')
 
-required_login_list = ['/user/center', '/user/change', '/article/publish', '/user/upload_photo']
+# 用于存储登录后的用户路由列表
+required_login_list = ['/user/center',
+                       '/user/change',
+                       '/article/publish',
+                       '/user/upload_photo'
+                        ]
 
 
 # @user_bp1.before_app_first_request
@@ -22,10 +27,10 @@ required_login_list = ['/user/center', '/user/change', '/article/publish', '/use
 #     print('before_app_first_request')
 
 
-
+# ****重点*****
 @user_bp1.before_app_request
 def before_request1():
-    """每次请求前认证"""
+    """每次请求调用"""
     print('before_request1before_request1', request.path)
     if request.path in required_login_list:
         id = session.get('uid')
@@ -33,7 +38,7 @@ def before_request1():
             return render_template('user/login.html')
         else:
             user = User.query.get(id)
-            # g对象，g对象flask的全局对象，保存本次请求的对象
+            # g对象，本次请求的对象
             g.user = user
 
 
@@ -53,42 +58,38 @@ def before_request1():
 # 自定义过滤器
 @user_bp1.app_template_filter('cdecode')
 def content_decode(content):
-    """获取文章内容"""
     content = content.decode('utf-8')
     return content[:200]
 
 
+# 首页
 @user_bp1.route('/')
 def index():
-    """首页"""
-    # 1.cookie获取方式
+    # 1。cookie获取方式
     # uid = request.cookies.get('uid', None)
-    # 2.session的获取,session底层默认获取
+    # 2。session的获取,session底层默认获取
+    # 2。session的方式：
     uid = session.get('uid')
-    # 接收页码参数
-    page = int(request.args.get('pgge',1))
-    # 获取文章列表,根据最新发布时间降序,进行分页
-    # pgae表示第一页，per_page:一页显示几条数据
-    pagination = Article.query.order_by(-Article.pdatetime).paginate(page=1,per_page=4)
-    # 获取分页后的数据
-    print(pagination.items) # 所有分页数据
-    print(pagination.page) # 当前页码数
-    print(pagination.prev_num) # 当前页的前一页码数
-    print(pagination.next_num) # 当前页的下一页码数
-    print(pagination.has_next) # True
-    print(pagination.pages) # True
-    print(pagination.pages) # 总共有几页
-    print(pagination.total) # 总的记录条数
-
+    # 获取文章列表   7 6 5  |  4 3 2 | 1
+    # 接收页码数
+    page = int(request.args.get('page', 1))
+    pagination = Article.query.order_by(-Article.pdatetime).paginate(page=page, per_page=3)
+    print(pagination.items)  # [<Article 4>, <Article 3>, <Article 2>]
+    print(pagination.page)  # 当前的页码数
+    print(pagination.prev_num)  # 当前页的前一个页码数
+    print(pagination.next_num)  # 当前页的后一页的页码数
+    print(pagination.has_next)  # True
+    print(pagination.has_prev)  # True
+    print(pagination.pages)  # 总共有几页
+    print(pagination.total)  # 总的记录条数
     # 获取分类列表
     types = Article_type.query.all()
     # 判断用户是否登录
     if uid:
-        user = User.query.get(uid) # 获取当前登录用户id
-        # 渲染用户和文章信息及分页后的数据
+        user = User.query.get(uid)
         return render_template('user/index.html', user=user, types=types, pagination=pagination)
     else:
-        return render_template('user/index.html',  types=types,pagination=pagination)
+        return render_template('user/index.html', types=types, pagination=pagination)
 
 
 # 用户注册
@@ -127,20 +128,6 @@ def check_phone():
         return jsonify(code=400, msg='此号码已被注册')
     else:
         return jsonify(code=200, msg='此号码可用')
-
-
-@user_bp1.route('check_username',methods=['GET','POST'])
-def check_username():
-    """校验用户名是否重复注册"""
-    # 接收参数
-    username = request.args.get('username')
-    # 根据用户名查询
-    user = User.query.filter_by(username=username).first()
-    # 用户已注册，渲染错误信息
-    if user:
-        return jsonify(code=400,msg='此用户名已注册')
-    else:
-        return jsonify(code=200,msg='此用户名可用')
 
 
 # 用户登录
@@ -223,11 +210,11 @@ def send_message():
 # 用户退出
 @user_bp1.route('/logout')
 def logout():
-    # 1。 cookie的方式
+    # 1. cookie的方式
     # response = redirect(url_for('user.index'))
     # 通过response对象的delete_cookie(key),key就是要删除的cookie的key
     # response.delete_cookie('uid')
-    # 2。session的方式
+    # 2.session的方式
     # del session['uid']
     session.clear()
     return redirect(url_for('user.index'))
@@ -237,8 +224,9 @@ def logout():
 @user_bp1.route('/center')
 def user_center():
     types = Article_type.query.all()
-    photos = Photo.query.filter(Photo.user_id==g.user.id).all()
-    return render_template('user/center.html', user=g.user, types=types,photos=photos)
+    # 查询当前登录用户上传的相片
+    photos = Photo.query.filter(Photo.user_id == g.user.id).all()
+    return render_template('user/center.html', user=g.user, types=types, photos=photos)
 
 
 # 图片的扩展名
@@ -264,7 +252,7 @@ def user_change():
             file_path = os.path.join(Config.UPLOAD_ICON_DIR, icon_name)
             icon.save(file_path)
             # 保存成功
-            user = g.user
+            user = g.user #
             user.username = username
             user.phone = phone
             user.email = email
@@ -278,9 +266,10 @@ def user_change():
     return render_template('user/center.html', user=g.user)
 
 
+
 @user_bp1.route('/article', methods=['GET', 'POST'])
 def publish_article():
-    """发布文章"""
+    """发表文章"""
     if request.method == 'POST':
         title = request.form.get('title')
         type = request.form.get('type')
@@ -291,22 +280,42 @@ def publish_article():
     return '发表失败！'
 
 
-@user_bp1.route('/upload_photo',methods=['GET','POST'])
+#
+@user_bp1.route('/upload_photo', methods=['GET', 'POST'])
 def upload_photo():
-    """上传照片到七牛云"""
-    # 接收要上传的照片参数
-    photo = request.files.get('photo')
-    # 调用工具模块中的方法
-    ret,info = upload_qiniu(photo)
+    """上传照片"""
+    # 获取上传的内容
+    photo = request.files.get('photo')  # FileStorage
+    # photo.filename,photo.save(path)
+    # 工具模块中封装方法
+    ret, info = upload_qiniu(photo)
     if info.status_code == 200:
-        photo = Photo() # 实例化Photo对象
-        # 通过ret.key获取文件名
+        photo = Photo() # 创建photo对象
         photo.photo_name = ret['key']
-        # 将当前上传图片用户保存到photo.user_id属性中
         photo.user_id = g.user.id
-        db.session.add(photo) # 添加到数据库并提交
+        db.session.add(photo)
         db.session.commit()
-        return '上传成功'
+        return '上传成功！'
     else:
-        return '上传失败'
+        return '上传失败！'
 
+
+@user_bp1.route('/myphoto')
+def myphoto():
+    """我的相册"""
+    page = int(request.args.get('page', 1))
+    # 分页操作
+    photos = Photo.query.paginate(page=page, per_page=3)
+    user_id = session.get('uid',None)
+    user = None
+    if user_id:
+        user = User.query.get(user_id)
+    return render_template('user/myphoto.html', photos=photos, user=user)
+
+
+@user_bp1.route('/error')
+def test_error():
+    # print(request.headers)
+    # print(request.headers.get('Accept-Encoding'))
+    referer = request.headers.get('Referer', None)
+    return render_template('500.html', err_msg='有误', referer=referer)
