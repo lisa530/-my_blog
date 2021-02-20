@@ -12,8 +12,10 @@ class User(db.Model):
     icon = db.Column(db.String(100))
     isdelete = db.Column(db.Boolean, default=False)
     rdatetime = db.Column(db.DateTime, default=datetime.now)
-    # 增加一个字段
+    # 增加一个关联字段，在Article类中增加一个uesr属性
+    # 通过用户查询文章，user.articles，根据文章查询用户：article.user
     articles = db.relationship('Article', backref='user')
+    # 增加关联字段，根据用户找评论(user.comments),根据评论找用户(comments.user)
     comments = db.relationship('Comment', backref='user')
 
     def __str__(self):

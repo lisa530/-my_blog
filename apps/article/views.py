@@ -40,7 +40,7 @@ def publish_article():
 
 @article_bp1.route('/detail')
 def article_detail():
-    """文章详情"""
+    """获取文章详情"""
     # 获取文章对象通过id
     article_id = request.args.get('aid')
     article = Article.query.get(article_id)
@@ -51,9 +51,9 @@ def article_detail():
     user_id = session.get('uid', None)
     if user_id: # 用户已登录，查询数据库
         user = User.query.get(user_id)
-    # 接收分页参数，默认为第1页
+    # 接收分页参数，默认展示第1页
     page = int(request.args.get('page', 1))
-    # 查询文章评论，查询条件：根据文章id查询，并且 按照文章评论时间最新排序，并且进行分页处理
+    # 查询文章评论，查询条件：根据文章id查询，并且 按照最新文章评论时间排序，并且进行分页处理
     comments = Comment.query.filter(Comment.article_id == article_id) \
         .order_by(-Comment.cdatetime) \
         .paginate(page=page, per_page=5)
@@ -80,20 +80,22 @@ def article_love():
     return jsonify(num=article.love_num)
 
 
-# 发表文章评论
 @article_bp1.route('/add_comment', methods=['GET', 'POST'])
 def article_comment():
+    """发表文章评论"""
+    # post请求
     if request.method == 'POST':
+        # 接收表单参数
         comment_content = request.form.get('comment')
-        user_id = g.user.id
+        user_id = g.user.id # 取出当前登录用户
         article_id = request.form.get('aid')
         # 评论模型
-        comment = Comment()
-        comment.comment = comment_content
-        comment.user_id = user_id
-        comment.article_id = article_id
-        db.session.add(comment)
+        comment = Comment() # 实例化Comment类
+        comment.comment = comment_content # 文章评论
+        comment.user_id = user_id # 用户
+        comment.article_id = article_id # 文章id
+        db.session.add(comment) # 提交到数据库
         db.session.commit()
-
+        # 重定向到详情页：127.0.0.1:5000/article/article_detail?aid=1
         return redirect(url_for('article.article_detail') + "?aid=" + article_id)
     return redirect(url_for('user.index'))

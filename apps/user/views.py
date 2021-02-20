@@ -18,7 +18,8 @@ required_login_list = ['/user/center',
                        '/user/change',
                        '/article/publish',
                        '/user/upload_photo',
-                       '/user/delete_qiniu'
+                       '/user/delete_qiniu',
+                       '/article/add_comment'
                         ]
 
 
@@ -28,18 +29,20 @@ required_login_list = ['/user/center',
 #     print('before_app_first_request')
 
 
-# ****重点*****
+# 用户登录中间件
 @user_bp1.before_app_request
 def before_request1():
     """每次请求调用"""
     print('before_request1before_request1', request.path)
+    # 如果当前请求路径中 在用户登录列表中
     if request.path in required_login_list:
+        # 将获取用户id
         id = session.get('uid')
         if not id:
             return render_template('user/login.html')
         else:
             user = User.query.get(id)
-            # g对象，本次请求的对象
+            # g对象，g对象是flask全局对象，只是对本次请求的对象有效
             g.user = user
 
 
@@ -61,7 +64,6 @@ def before_request1():
 def content_decode(content):
     content = content.decode('utf-8')
     return content[:200]
-
 
 
 @user_bp1.route('/')
@@ -120,6 +122,7 @@ def check_username():
     else:
         return jsonify(code=200, msg='此用户名可用')
 
+
 @user_bp1.route('/register', methods=['GET', 'POST'])
 def register():
     """用户注册"""
@@ -141,13 +144,8 @@ def register():
             # 添加并提交
             db.session.add(user)
             db.session.commit()
-            return redirect(url_for('user.index'))
+            return redirect(url_for('user.login'))
     return render_template('user/register.html')
-
-
-
-
-
 
 
 @user_bp1.route('/login', methods=['GET', 'POST'])
@@ -230,7 +228,6 @@ def send_message():
             return jsonify(code=400, msg='短信发送失败！')
 
 
-
 @user_bp1.route('/logout')
 def logout():
     """用户退出"""
@@ -242,7 +239,6 @@ def logout():
     # del session['uid']
     session.clear()
     return redirect(url_for('user.index'))
-
 
 
 @user_bp1.route('/center')
@@ -277,7 +273,7 @@ def user_change():
             file_path = os.path.join(Config.UPLOAD_ICON_DIR, icon_name)
             icon.save(file_path)
             # 保存成功
-            user = g.user #
+            user = g.user # 从g对象user属性中取出当前登录用户
             user.username = username
             user.phone = phone
             user.email = email
@@ -359,7 +355,6 @@ def photo_del():
         return redirect(url_for('user.user_center'))
     else:
         return render_template('500.html',msg='删除相册图片失败！')
-
 
 
 
