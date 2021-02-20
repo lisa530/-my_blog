@@ -18,6 +18,9 @@ class Config:
     UPLOAD_ICON_DIR = os.path.join(STATIC_DIR, 'upload/icon')
     # 相册的上传目录
     UPLOAD_PHOTO_DIR = os.path.join(STATIC_DIR, 'upload/photo')
+    # 七牛云
+    access_key = 'bZlGPCXm3Bt6SPqQeY3G9-Te4PiCHOUlOVuEQWM1'
+    secret_key = '9ttO0AXliBgiUQvMHPsGHPaOXpiqazp6uvDv11nW'
 
 
 class DevelopmentConfig(Config):
