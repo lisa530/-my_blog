@@ -38,3 +38,15 @@ class AboutMe(db.Model):
     # 要与用户建立联系
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True)
     user = db.relationship('User', backref='about')
+
+
+class MessageBoard(db.Model):
+    """留言表"""
+    id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    content = db.Column(db.String(255), nullable=False)
+    mdatetime = db.Column(db.DateTime,default=datetime.now,doc='创建时间')
+    user_id = db.Column(db.Integer,db.ForeignKey('user.id'),doc='关联用户的主键')
+    # 添加关联查询字段,backref：表示在User表中添加一个字段messages
+    # 主表查询子表：user.messages(查询用户对应的留言信息)
+    # 子表查询主表：messageboard.user(查询留言对应用户是谁)
+    user = db.relationship('User',backref='messages',doc='添加关联查询字段')

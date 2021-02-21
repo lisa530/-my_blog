@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from apps.article.models import Article_type, Article
-from apps.user.models import User, Photo, AboutMe
+from apps.user.models import User, Photo, AboutMe, MessageBoard
 from apps.user.smssend import SmsSendAPIDemo
 from apps.utils.qiniu import upload_qiniu, delete_qiniu
 from exts import db
@@ -389,8 +389,36 @@ def about_me():
 
 @user_bp1.route('/showabout')
 def show_about():
-    aboume = AboutMe.query.all()
-    return render_template('user/aboutme.html', user=g.user,aboutme=about_me)
+    """展示关于我的信息"""
+    return render_template('user/aboutme.html', user=g.user)
+
+
+@user_bp1.route('/board',methods=['GET','POST'])
+def show_board():
+    """留言板"""
+    # 1.获取登录用户信息
+    uid = session.get('uid',None)
+    user = None
+    # 如果uid存在，查询数据库
+    if uid:
+        user = User.query.get('uid')
+    # 3. 查询所有的留言内容，并按最新留言时间倒序排序，并分页展示
+    # 接收分页参数,默认查看第1页
+    page = int(request.args.get('page',1))
+    boards = MessageBoard.query.order_by(-MessageBoard.mdatetime).paginate(page=page,per_page=5)
+    # 4.判断是否是post请求
+    if request.method == "POST":
+        content = request.form.get('board')
+        # 5. 添加留言
+        msg_board = MessageBoard()
+        msg_board.content = content
+        if uid:
+            msg_board.user_id = uid
+            db.session.add(msg_board)
+            db.session.commit()
+            return redirect(url_for('user.show_board'))
+    # 6. 渲染模板信息
+    return render_template('user/board.html',user=user,boards=boards)
 
 
 @user_bp1.route('/error')
