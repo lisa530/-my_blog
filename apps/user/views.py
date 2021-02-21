@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from apps.article.models import Article_type, Article
-from apps.user.models import User, Photo
+from apps.user.models import User, Photo, AboutMe
 from apps.user.smssend import SmsSendAPIDemo
 from apps.utils.qiniu import upload_qiniu, delete_qiniu
 from exts import db
@@ -14,22 +14,23 @@ from settings import Config
 user_bp1 = Blueprint('user', __name__, url_prefix='/user')
 
 # 用于存储登录后的用户路由列表
-required_login_list = ['/user/center',
-                       '/user/change',
-                       '/article/publish',
-                       '/user/upload_photo',
-                       '/user/delete_qiniu',
-                       '/article/add_comment'
-                        ]
+required_login_list = [
+        '/user/center',
+       '/user/change',
+       '/article/publish',
+       '/user/upload_photo',
+       '/user/photo_del',
+       '/article/add_comment',
+        '/user/aboutme',
+        '/user/showabout'
+     ]
 
 
 # @user_bp1.before_app_first_request
 # def first_request():
-#     """第一次请求调用"""
 #     print('before_app_first_request')
 
 
-# 用户登录中间件
 @user_bp1.before_app_request
 def before_request1():
     """每次请求调用"""
@@ -51,8 +52,8 @@ def before_request1():
 #     response.set_cookie('a', 'bbbb', max_age=19)
 #     print('after_request_test')
 #     return response
-
-
+#
+#
 # @user_bp1.teardown_app_request
 # def teardown_request_test(response):
 #     print('teardown_request_test')
@@ -60,10 +61,17 @@ def before_request1():
 
 
 # 自定义过滤器
+
 @user_bp1.app_template_filter('cdecode')
 def content_decode(content):
     content = content.decode('utf-8')
     return content[:200]
+
+
+@user_bp1.app_template_filter('cdecode1')
+def content_decode(content):
+    content = content.decode('utf-8')
+    return content
 
 
 @user_bp1.route('/')
@@ -96,6 +104,32 @@ def index():
         return render_template('user/index.html', types=types, pagination=pagination)
 
 
+
+@user_bp1.route('/register', methods=['GET', 'POST'])
+def register():
+    """用户注册"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        repassword = request.form.get('repassword')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        if password == repassword:
+            # 注册用户
+            user = User()
+            user.username = username
+            # 使用自带的函数实现加密：generate_password_hash
+            user.password = generate_password_hash(password)
+            # print(password)
+            user.phone = phone
+            user.email = email
+            # 添加并提交
+            db.session.add(user)
+            db.session.commit()
+            return redirect(url_for('user.index'))
+    return render_template('user/register.html')
+
+
 @user_bp1.route('/checkphone', methods=['GET', 'POST'])
 def check_phone():
     """手机号码验证"""
@@ -123,43 +157,16 @@ def check_username():
         return jsonify(code=200, msg='此用户名可用')
 
 
-@user_bp1.route('/register', methods=['GET', 'POST'])
-def register():
-    """用户注册"""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        repassword = request.form.get('repassword')
-        phone = request.form.get('phone')
-        email = request.form.get('email')
-        if password == repassword:
-            # 注册用户
-            user = User()
-            user.username = username
-            # 使用自带的函数实现加密：generate_password_hash
-            user.password = generate_password_hash(password)
-            # print(password)
-            user.phone = phone
-            user.email = email
-            # 添加并提交
-            db.session.add(user)
-            db.session.commit()
-            return redirect(url_for('user.login'))
-    return render_template('user/register.html')
-
-
 @user_bp1.route('/login', methods=['GET', 'POST'])
 def login():
     """用户登录"""
-    # post请求
     if request.method == 'POST':
         f = request.args.get('f')
         if f == '1':  # 用户名或者密码
             username = request.form.get('username')
             password = request.form.get('password')
-            # 过滤查询条件：用户输入的用户和数据库用户名相同
             users = User.query.filter(User.username == username).all()
-            for user in users: # 遍历用户列表
+            for user in users:
                 # 如果flag=True表示匹配，否则密码不匹配
                 flag = check_password_hash(user.password, password)
                 if flag:
@@ -167,7 +174,7 @@ def login():
                     # response = redirect(url_for('user.index'))
                     # response.set_cookie('uid', str(user.id), max_age=1800)
                     # return response
-                    # 2.将用户的信息存储在session中，以字典的形式存储
+                    # 2。session机制,session当成字典使用
                     session['uid'] = user.id
                     return redirect(url_for('user.index'))
             else:
@@ -176,24 +183,24 @@ def login():
             print('----->22222')
             phone = request.form.get('phone')
             code = request.form.get('code')
-            # 获取当前登录用户的手机号验证码
+            # 先验证验证码
             valid_code = session.get(phone)
-            # 将验证码转成字符串
             print('valid_code:' + str(valid_code))
-            if code == valid_code: # 判断验证码
-                # 查询用户输入的手机号是否和数据库相同
+            if code == valid_code:
+                # 查询数据库
                 user = User.query.filter(User.phone == phone).first()
                 print(user)
-                if user: # user存在,登录成功，将用户的信息写入到session中
+                if user:
+                    # 登录成功
                     session['uid'] = user.id
-                    # 重定向到首页
                     return redirect(url_for('user.index'))
-                else: # 不存在，渲染提示信息
+                else:
                     return render_template('user/login.html', msg='此号码未注册')
             else:
                 return render_template('user/login.html', msg='验证码有误！')
-    # get请求
+
     return render_template('user/login.html')
+
 
 
 @user_bp1.route('/sendMsg')
@@ -228,10 +235,11 @@ def send_message():
             return jsonify(code=400, msg='短信发送失败！')
 
 
+
 @user_bp1.route('/logout')
 def logout():
     """用户退出"""
-    # 1. cookie的方式
+    # 1.cookie的方式
     # response = redirect(url_for('user.index'))
     # 通过response对象的delete_cookie(key),key就是要删除的cookie的key
     # response.delete_cookie('uid')
@@ -245,7 +253,6 @@ def logout():
 def user_center():
     """用户中心"""
     types = Article_type.query.all()
-    # 查询当前登录用户上传的相片
     photos = Photo.query.filter(Photo.user_id == g.user.id).all()
     return render_template('user/center.html', user=g.user, types=types, photos=photos)
 
@@ -257,14 +264,16 @@ ALLOWED_EXTENSIONS = ['jpg', 'png', 'gif', 'bmp']
 # 用户信息修改
 @user_bp1.route('/change', methods=['GET', 'POST'])
 def user_change():
+    """用户信息修改"""
     if request.method == 'POST':
         username = request.form.get('username')
         phone = request.form.get('phone')
         email = request.form.get('email')
-        # 只要有文件（图片），获取方式必须使用request.files.get(name)
+        # 获取图片参数
         icon = request.files.get('icon')
-        # print('======>', icon)  # FileStorage
-        # 属性： filename 用户获取文件的名字
+        print(type(icon)) # FileStorage对象
+        # print(icon.filename) 获取文件的名字
+        # 属性： filename
         # 方法:  save(保存路径)
         icon_name = icon.filename  # 1440w.jpg
         suffix = icon_name.rsplit('.')[-1]
@@ -299,6 +308,7 @@ def publish_article():
 
         return render_template('article/test.html', content=content)
     return '发表失败！'
+
 
 
 @user_bp1.route('/upload_photo', methods=['GET', 'POST'])
@@ -342,20 +352,45 @@ def photo_del():
     pid = request.args.get('pid')
     # 2.查询pid是否有效
     photo = Photo.query.get(pid)
-    # 获取相片名称
     filename = photo.photo_name
-    # 调用七牛云封装的删除的文件函数
-    info = delete_qiniu(filename) # 将要删除的文件名传递给函数
-    # 判断返回的状态码
+    # 调用七牛云封装的删除文件的函数
+    info = delete_qiniu(filename)
+    # 如果状态码为200表示删除七牛云存储文件成功
     if info.status_code == 200:
-        # 再删除数据库中的内容，并提交
+        # 再删除数据库的内容，并提交
         db.session.delete(photo)
         db.session.commit()
         # 重定向到用户中心
         return redirect(url_for('user.user_center'))
-    else:
-        return render_template('500.html',msg='删除相册图片失败！')
+    else: # 返回的状态码不是200，渲染错误信息
 
+        return render_template('500.html', err_msg='删除相册图片失败！')
+
+
+
+@user_bp1.route('/aboutme',methods=['GET','POST'])
+def about_me():
+    """关于我"""
+    content = request.form.get('about')
+    try:
+        aboutme = AboutMe()
+        aboutme.content = content.encode('utf-8')
+        aboutme.user_id = g.user.id
+        db.session.add(aboutme)
+        db.session.commit()
+    except Exception as err:
+        print("---------")
+        return redirect(url_for('user.user_center'))
+
+    else:
+        return render_template('user/aboutme.html',user=g.user)
+
+
+
+@user_bp1.route('/showabout')
+def show_about():
+    aboume = AboutMe.query.all()
+    return render_template('user/aboutme.html', user=g.user,aboutme=about_me)
 
 
 @user_bp1.route('/error')
@@ -364,3 +399,4 @@ def test_error():
     # print(request.headers.get('Accept-Encoding'))
     referer = request.headers.get('Referer', None)
     return render_template('500.html', err_msg='有误', referer=referer)
+

@@ -17,7 +17,6 @@ nullable=False不添加，就是允许为空，
 '''
 
 class Article_type(db.Model):
-    """文章类型表"""
     __tablename__ = 'type'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     type_name = db.Column(db.String(20), nullable=False)
@@ -25,7 +24,6 @@ class Article_type(db.Model):
 
 
 class Article(db.Model):
-    """文章表"""
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.String(50), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -40,15 +38,12 @@ class Article(db.Model):
 
 
 class Comment(db.Model):
-    """评论表(文章和文章类型中间表)"""
     # 自定义表的名字
     __tablename__ = 'comment'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     comment = db.Column(db.String(255), nullable=False)
-    # 外键：关联用户的主键id
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    # 外键：关联文章的主键id
     article_id = db.Column(db.Integer, db.ForeignKey('article.id'))
     cdatetime = db.Column(db.DateTime, default=datetime.now)
 

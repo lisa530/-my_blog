@@ -6,7 +6,7 @@ class Config:
     # mysql+pymysql://user:password@hostip:port/databasename
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:123456@127.0.0.1:3306/flaskblog'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = True
+    # SQLALCHEMY_ECHO = True
     # secret_key
     SECRET_KEY = 'kdjklfjkd87384hjdhjh'
     # 项目路径
@@ -19,9 +19,8 @@ class Config:
     # 相册的上传目录
     UPLOAD_PHOTO_DIR = os.path.join(STATIC_DIR, 'upload/photo')
     # 七牛云
-    access_key = 'bZlGPCXm3Bt6SPqQeY3G9-Te4PiCHOUlOVuEQWM1'
-    secret_key = '9ttO0AXliBgiUQvMHPsGHPaOXpiqazp6uvDv11nW'
-
+    access_key = 'L-g0s6pewJkciw96uxUbIiLjrxIew2cSH0XjAKBN'
+    secret_key = 'dDRR_tCXC2_6nJ7d0Lb73IEny760CFVNSS6xP1zk'
 
 class DevelopmentConfig(Config):
     ENV = 'development'
