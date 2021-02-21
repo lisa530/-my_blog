@@ -1,26 +1,19 @@
-from ext import db
-# 导入工厂函数
+from flask_migrate import Migrate, MigrateCommand # 数据库迁移模块
+from flask_script import Manager # flask扩展启动脚本模块
+from apps.user.models import *
+from apps.article.models import *
 from apps import create_app
-# 导入迁移框架
-from flask_migrate import MigrateCommand,Migrate
-# 导入flask脚本管理模块
-from flask_script import Manager
+from exts import db # 数据库对象
 
-# from apps.goods.models import *
-# from apps.article.models import *
-# from apps.user.models import User
-
-# 实例化create_app
+# 实例化工厂函数
 app = create_app()
-# 实例化Manage对象
-manage = Manager(app)
-# 实例化迁移框架
-migrate = Migrate(app,db)
-# 添加命令到manage对象中
-manage.add_command('db',MigrateCommand)
-
+# 实例化脚本管理对象
+manager = Manager(app=app)
+# 实例化数据迁移框架,将flask的app对象和数据库db对象绑定到对象上
+migrate = Migrate(app=app, db=db)
+# 添加命令到脚本管理对象
+manager.add_command('db', MigrateCommand)
 
 if __name__ == '__main__':
-    # app.run()
-    print(app.url_map)
-    manage.run()
+    # 使用脚本启动
+    manager.run()

@@ -1,12 +1,26 @@
+import os
+
+
 class Config:
     DEBUG = True
     # mysql+pymysql://user:password@hostip:port/databasename
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:123456@127.0.0.1:3306/flaskblog'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = True
-    # 设置密钥
+    # SQLALCHEMY_ECHO = True
+    # secret_key
     SECRET_KEY = 'kdjklfjkd87384hjdhjh'
-
+    # 项目路径
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    # 静态文件夹的路径
+    STATIC_DIR = os.path.join(BASE_DIR, 'static')
+    TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+    # 头像的上传目录
+    UPLOAD_ICON_DIR = os.path.join(STATIC_DIR, 'upload/icon')
+    # 相册的上传目录
+    UPLOAD_PHOTO_DIR = os.path.join(STATIC_DIR, 'upload/photo')
+    # 七牛云
+    access_key = 'L-g0s6pewJkciw96uxUbIiLjrxIew2cSH0XjAKBN'
+    secret_key = 'dDRR_tCXC2_6nJ7d0Lb73IEny760CFVNSS6xP1zk'
 
 class DevelopmentConfig(Config):
     ENV = 'development'
@@ -15,3 +29,10 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     ENV = 'production'
     DDEBUG = False
+
+
+if __name__ == '__main__':
+    print(Config.BASE_DIR)
+    # print(os.path.abspath(__file__))
+    print(Config.STATIC_DIR)
+    print(Config.UPLOAD_ICON_DIR)
