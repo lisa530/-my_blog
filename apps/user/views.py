@@ -410,15 +410,32 @@ def show_board():
     if request.method == "POST":
         content = request.form.get('board')
         # 5. 添加留言
+        # 添加留言
         msg_board = MessageBoard()
         msg_board.content = content
         if uid:
             msg_board.user_id = uid
-            db.session.add(msg_board)
-            db.session.commit()
-            return redirect(url_for('user.show_board'))
+        db.session.add(msg_board)
+        db.session.commit()
+        return redirect(url_for('user.show_board'))
     # 6. 渲染模板信息
-    return render_template('user/board.html',user=user,boards=boards)
+    return render_template('user/board.html', user=user, boards=boards)
+
+
+@user_bp1.route('/del_board')
+def delete_board():
+    """删除留言"""
+    # 1.接收要删除的留言信息id
+    bid = request.form.get('bid')
+    # 2.查询参数是否有效
+    msgboard = MessageBoard.query.get(bid)
+    # 3. 删除留言，并提交到数据库
+
+    db.session.delete(msgboard)
+    db.session.commit()
+    # 4. 重定向到用户中心
+    return redirect(url_for('user.user_center'))
+
 
 
 @user_bp1.route('/error')

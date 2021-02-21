@@ -99,6 +99,7 @@
                             <th>时间</th>
                             <th>操作</th>
                         </tr>
+                {#  获取用户的留言内容 #}
                         {% for message in user.messages %}
                             <tr {% if loop.index%2==0 %}class="warning" {% endif %}>
                                 <td>{{ loop.index }}</td>
